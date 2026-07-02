@@ -1,18 +1,18 @@
 :root {
   color-scheme: dark;
-  --bg: #101215;
-  --panel: #181c22;
-  --panel-soft: #202630;
-  --panel-strong: #252d37;
+  --bg: #0f1115;
+  --panel: #171b21;
+  --panel-soft: #1e242c;
+  --panel-strong: #242b35;
   --text: #f4f1ea;
   --muted: #abb3bc;
-  --line: #34404e;
+  --line: #303946;
   --teal: #4dd5b5;
   --coral: #ff735c;
   --amber: #f2c15e;
   --blue: #85a9ff;
   --danger: #ff5375;
-  --shadow: 0 20px 60px rgba(0, 0, 0, 0.36);
+  --shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -37,7 +37,7 @@ select {
 }
 
 button {
-  min-height: 44px;
+  min-height: 42px;
   padding: 0 16px;
   border: 1px solid transparent;
   border-radius: 6px;
@@ -53,7 +53,7 @@ button:disabled {
 input,
 select {
   width: 100%;
-  min-height: 44px;
+  min-height: 42px;
   padding: 0 12px;
   color: var(--text);
   border: 1px solid var(--line);
@@ -70,12 +70,12 @@ select:focus {
 
 .app-shell {
   display: grid;
-  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(320px, 392px) minmax(0, 1fr);
+  gap: 14px;
   width: min(1440px, 100%);
   min-height: 100vh;
   margin: 0 auto;
-  padding: 18px;
+  padding: 16px;
 }
 
 .setup-panel,
@@ -86,11 +86,11 @@ select:focus {
 .setup-panel {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  height: calc(100vh - 36px);
-  min-height: calc(100vh - 36px);
-  overflow: auto;
-  padding: 20px;
+  gap: 12px;
+  height: calc(100vh - 32px);
+  min-height: calc(100vh - 32px);
+  overflow: hidden;
+  padding: 18px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -122,7 +122,7 @@ p {
 }
 
 h1 {
-  font-size: 2.45rem;
+  font-size: 2.2rem;
   line-height: 0.98;
   letter-spacing: 0;
 }
@@ -161,15 +161,20 @@ label {
 
 .exercise-list {
   display: grid;
-  gap: 10px;
+  flex: 1 1 auto;
+  gap: 8px;
+  min-height: 118px;
+  overflow: auto;
+  padding-right: 3px;
+  scrollbar-color: var(--line) transparent;
 }
 
 .exercise-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 92px 44px;
+  grid-template-columns: 30px minmax(0, 1fr) 82px 38px;
   gap: 8px;
-  align-items: end;
-  padding: 10px;
+  align-items: center;
+  padding: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel-soft);
@@ -177,14 +182,28 @@ label {
 
 .exercise-row select,
 .exercise-row input {
-  min-height: 40px;
+  min-height: 38px;
+  padding: 0 10px;
+}
+
+.exercise-step {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: #061713;
+  background: var(--teal);
+  font-size: 0.86rem;
+  font-weight: 840;
 }
 
 .icon-button {
   display: inline-grid;
   place-items: center;
-  width: 44px;
-  min-width: 44px;
+  width: 38px;
+  min-width: 38px;
+  min-height: 38px;
   padding: 0;
   color: var(--text);
   border-color: var(--line);
@@ -196,6 +215,11 @@ label {
 .primary-button {
   color: #061713;
   background: var(--teal);
+}
+
+.compact-button {
+  min-height: 36px;
+  padding: 0 12px;
 }
 
 .secondary-button {
@@ -215,54 +239,49 @@ label {
   width: 100%;
 }
 
-.alarm-card,
-.queue-card {
+.action-row {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.summary-card {
   display: grid;
-  gap: 8px;
-  padding: 13px;
+  gap: 9px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel-soft);
 }
 
-.alarm-card strong {
+.summary-card strong {
   overflow: hidden;
-  font-size: 1.25rem;
+  font-size: 1.45rem;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.queue-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.summary-card p {
+  color: var(--text);
+  font-weight: 740;
+  line-height: 1.35;
 }
 
-.queue-pill {
+.cache-status {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
+  width: fit-content;
+  min-height: 26px;
+  padding: 0 9px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.04);
-  font-size: 0.86rem;
-  font-weight: 690;
-}
-
-.status-block {
-  display: grid;
-  gap: 6px;
-  margin-top: auto;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
-}
-
-.status-block p {
   color: var(--muted);
-  line-height: 1.45;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.78rem;
+  font-weight: 690;
 }
 
 #appStatus {
@@ -273,17 +292,17 @@ label {
 .challenge-stage {
   display: grid;
   grid-template-rows: auto minmax(260px, 1fr) auto;
-  gap: 12px;
-  height: calc(100vh - 36px);
+  gap: 10px;
+  height: calc(100vh - 32px);
 }
 
 .stage-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 50px;
+  min-height: 46px;
   gap: 12px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -378,8 +397,8 @@ canvas {
 
 .challenge-console {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 10px;
+  padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -391,7 +410,7 @@ canvas {
 }
 
 .current-exercise strong {
-  font-size: 1.45rem;
+  font-size: 1.35rem;
   line-height: 1.12;
 }
 
@@ -454,6 +473,13 @@ canvas {
     overflow: visible;
   }
 
+  .exercise-list {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+    padding-right: 0;
+  }
+
   .challenge-stage {
     height: auto;
     grid-template-rows: auto minmax(360px, 58vh) auto;
@@ -474,14 +500,13 @@ canvas {
   }
 
   .field-grid,
-  .action-row,
   .camera-actions,
   .metric-strip {
     grid-template-columns: 1fr;
   }
 
   .exercise-row {
-    grid-template-columns: minmax(0, 1fr) 76px 44px;
+    grid-template-columns: 30px minmax(0, 1fr) 72px 38px;
   }
 
   .metric-strip > div + div {

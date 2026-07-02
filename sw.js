@@ -1,10 +1,10 @@
-const CACHE_NAME = "alarm-wake-challenge-v6";
+const CACHE_NAME = "alarm-wake-challenge-v9";
 const CACHE_PATHS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./src/app.js?v=20260702-3",
-  "./src/styles.css?v=20260702-3",
+  "./src/app.js?v=20260703-3",
+  "./src/styles.css?v=20260703-3",
   "./assets/icon-192.png",
   "./assets/icon-512.png",
   "./assets/maskable-512.png",

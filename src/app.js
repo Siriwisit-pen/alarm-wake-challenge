@@ -126,7 +126,6 @@ const dom = {
   phaseReadout: document.querySelector("#phaseReadout"),
   progressBar: document.querySelector("#progressBar"),
   progressLabel: document.querySelector("#progressLabel"),
-  queueSummary: document.querySelector("#queueSummary"),
   repCount: document.querySelector("#repCount"),
   resetButton: document.querySelector("#resetButton"),
   ringingBanner: document.querySelector("#ringingBanner"),
@@ -182,7 +181,6 @@ async function init() {
   loadSettings();
   wireControls();
   renderExerciseRows();
-  renderQueue();
   resetDetectorForCurrentExercise("Loading pose model.");
   renderAlarmStatus();
   registerServiceWorker();
@@ -341,7 +339,6 @@ function addExercise() {
   });
   persistSettings();
   renderExerciseRows();
-  renderQueue();
   resetDetectorForCurrentExercise("Exercise added.");
 }
 
@@ -364,7 +361,6 @@ function handleExerciseListChange(event) {
   };
   persistSettings();
   renderExerciseRows();
-  renderQueue();
   if (index === appState.currentIndex) {
     resetDetectorForCurrentExercise("Exercise updated.");
   }
@@ -389,7 +385,6 @@ function handleExerciseTargetInput(event) {
   }
   item.target = clamp(parsed, config.min, config.max);
   persistSettings();
-  renderQueue();
   if (index === appState.currentIndex) {
     resetDetectorForCurrentExercise("Target updated.");
   }
@@ -410,7 +405,6 @@ function handleExerciseListClick(event) {
   appState.currentIndex = Math.min(appState.currentIndex, appState.challenge.length - 1);
   persistSettings();
   renderExerciseRows();
-  renderQueue();
   resetDetectorForCurrentExercise("Exercise removed.");
 }
 
@@ -423,10 +417,14 @@ function renderExerciseRows() {
     row.className = "exercise-row";
     row.dataset.index = `${index}`;
 
+    const stepBadge = document.createElement("span");
+    stepBadge.className = "exercise-step";
+    stepBadge.textContent = `${index + 1}`;
+
     const exerciseField = document.createElement("div");
     exerciseField.className = "field-group";
     const exerciseLabel = document.createElement("label");
-    exerciseLabel.textContent = `Exercise ${index + 1}`;
+    exerciseLabel.textContent = "Exercise";
     const exerciseSelect = document.createElement("select");
     for (const [value, optionConfig] of Object.entries(EXERCISE_CONFIG)) {
       const option = document.createElement("option");
@@ -440,7 +438,7 @@ function renderExerciseRows() {
     const targetField = document.createElement("div");
     targetField.className = "field-group";
     const targetLabel = document.createElement("label");
-    targetLabel.textContent = config.unit;
+    targetLabel.textContent = config.unit === "sec" ? "Seconds" : "Reps";
     const targetInput = document.createElement("input");
     targetInput.type = "number";
     targetInput.min = `${config.min}`;
@@ -451,28 +449,17 @@ function renderExerciseRows() {
     const removeButton = document.createElement("button");
     removeButton.className = "icon-button";
     removeButton.type = "button";
-    removeButton.textContent = "x";
+    removeButton.textContent = "\u00d7";
     removeButton.title = "Remove exercise";
     removeButton.ariaLabel = "Remove exercise";
     removeButton.dataset.remove = `${index}`;
     removeButton.disabled = appState.challenge.length <= 1;
 
-    row.append(exerciseField, targetField, removeButton);
+    row.append(stepBadge, exerciseField, targetField, removeButton);
     dom.exerciseList.append(row);
   }
 
   dom.addExerciseButton.disabled = appState.challenge.length >= MAX_EXERCISES;
-}
-
-function renderQueue() {
-  dom.queueSummary.innerHTML = "";
-  for (const [index, item] of appState.challenge.entries()) {
-    const config = EXERCISE_CONFIG[item.exercise];
-    const pill = document.createElement("span");
-    pill.className = "queue-pill";
-    pill.textContent = `${index + 1}. ${config.label} ${item.target} ${config.unit}`;
-    dom.queueSummary.append(pill);
-  }
 }
 
 function toggleAlarmArm() {
@@ -590,7 +577,6 @@ function advanceChallenge() {
   if (appState.currentIndex < appState.challenge.length - 1) {
     appState.currentIndex += 1;
     resetDetectorForCurrentExercise("Next exercise.");
-    renderQueue();
     return;
   }
 

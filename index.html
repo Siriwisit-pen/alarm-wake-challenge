@@ -8,14 +8,23 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon-192.png" />
     <link rel="apple-touch-icon" href="./assets/icon-192.png" />
-    <link rel="stylesheet" href="./src/styles.css?v=20260702-3" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260703-3" />
   </head>
   <body>
     <main class="app-shell">
       <section class="setup-panel" aria-label="Alarm setup">
         <div class="brand-block">
-          <p class="eyebrow">Offline alarm PWA</p>
+          <p class="eyebrow">Offline alarm</p>
           <h1>Wake Challenge</h1>
+        </div>
+
+        <div class="summary-card">
+          <div>
+            <span class="metric-label">Next alarm</span>
+            <strong id="alarmStatus">Not armed</strong>
+          </div>
+          <p id="appStatus">Loading pose model.</p>
+          <span id="offlineStatus" class="cache-status">Checking offline cache.</span>
         </div>
 
         <div class="field-grid">
@@ -36,8 +45,8 @@
 
         <div class="builder-header">
           <h2>Challenge</h2>
-          <button id="addExerciseButton" class="ghost-button" type="button">
-            Add
+          <button id="addExerciseButton" class="ghost-button compact-button" type="button">
+            + Add
           </button>
         </div>
 
@@ -55,21 +64,6 @@
         <button id="installButton" class="install-button" type="button" hidden>
           Install app
         </button>
-
-        <div class="alarm-card">
-          <span class="metric-label">Next alarm</span>
-          <strong id="alarmStatus">Not armed</strong>
-        </div>
-
-        <div class="queue-card">
-          <span class="metric-label">Queue</span>
-          <div id="queueSummary" class="queue-summary"></div>
-        </div>
-
-        <div class="status-block">
-          <p id="appStatus">Loading pose model.</p>
-          <p id="offlineStatus">Checking offline cache.</p>
-        </div>
       </section>
 
       <section class="challenge-stage" aria-label="Exercise challenge">
@@ -134,6 +128,6 @@
       </section>
     </main>
 
-    <script type="module" src="./src/app.js?v=20260702-3"></script>
+    <script type="module" src="./src/app.js?v=20260703-3"></script>
   </body>
 </html>
