@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101215" />
+    <title>Alarm Wake Challenge</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./assets/icon-192.png" />
+    <link rel="apple-touch-icon" href="./assets/icon-192.png" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260702-3" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="setup-panel" aria-label="Alarm setup">
+        <div class="brand-block">
+          <p class="eyebrow">Offline alarm PWA</p>
+          <h1>Wake Challenge</h1>
+        </div>
+
+        <div class="field-grid">
+          <div class="field-group">
+            <label for="alarmTime">Alarm time</label>
+            <input id="alarmTime" type="time" value="07:00" />
+          </div>
+
+          <div class="field-group">
+            <label for="sensitivitySelect">Sensitivity</label>
+            <select id="sensitivitySelect">
+              <option value="relaxed">Relaxed</option>
+              <option value="normal">Normal</option>
+              <option value="strict">Strict</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="builder-header">
+          <h2>Challenge</h2>
+          <button id="addExerciseButton" class="ghost-button" type="button">
+            Add
+          </button>
+        </div>
+
+        <div id="exerciseList" class="exercise-list"></div>
+
+        <div class="action-row">
+          <button id="saveAlarmButton" class="primary-button" type="button">
+            Arm alarm
+          </button>
+          <button id="startNowButton" class="secondary-button" type="button">
+            Start now
+          </button>
+        </div>
+
+        <button id="installButton" class="install-button" type="button" hidden>
+          Install app
+        </button>
+
+        <div class="alarm-card">
+          <span class="metric-label">Next alarm</span>
+          <strong id="alarmStatus">Not armed</strong>
+        </div>
+
+        <div class="queue-card">
+          <span class="metric-label">Queue</span>
+          <div id="queueSummary" class="queue-summary"></div>
+        </div>
+
+        <div class="status-block">
+          <p id="appStatus">Loading pose model.</p>
+          <p id="offlineStatus">Checking offline cache.</p>
+        </div>
+      </section>
+
+      <section class="challenge-stage" aria-label="Exercise challenge">
+        <div class="stage-toolbar">
+          <span id="modeBadge" class="status-pill">Setup</span>
+          <div class="stage-readout">
+            <span id="modelStatus">Loading model</span>
+            <span id="phaseReadout">Phase: idle</span>
+            <span id="fpsReadout">0 FPS</span>
+          </div>
+        </div>
+
+        <div class="video-frame">
+          <video id="webcam" autoplay playsinline muted></video>
+          <canvas id="overlay"></canvas>
+          <div id="ringingBanner" class="ringing-banner" hidden>
+            Alarm ringing
+          </div>
+          <div id="completionBadge" class="completion-badge" hidden>
+            Alarm cleared
+          </div>
+        </div>
+
+        <div class="challenge-console">
+          <div class="current-exercise">
+            <span id="challengePosition" class="metric-label">Exercise 1 of 1</span>
+            <strong id="currentExerciseName">Squat</strong>
+            <p id="hintText">
+              Face the camera. Keep your full body visible, then move from
+              standing to a clear squat and back up.
+            </p>
+          </div>
+
+          <div class="metric-strip" aria-live="polite">
+            <div>
+              <span class="metric-label" id="progressLabel">Reps</span>
+              <strong id="repCount">0</strong>
+            </div>
+            <div>
+              <span class="metric-label">Target</span>
+              <strong id="targetCount">10</strong>
+            </div>
+            <div>
+              <span class="metric-label">Form</span>
+              <strong id="formScore">--</strong>
+            </div>
+          </div>
+
+          <div class="progress-track" aria-hidden="true">
+            <div id="progressBar" class="progress-fill"></div>
+          </div>
+
+          <div class="camera-actions">
+            <button id="cameraButton" class="secondary-button" type="button">
+              Start camera
+            </button>
+            <button id="resetButton" class="ghost-button" type="button">
+              Reset challenge
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./src/app.js?v=20260702-3"></script>
+  </body>
+</html>
