@@ -8,7 +8,7 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon-192.png" />
     <link rel="apple-touch-icon" href="./assets/icon-192.png" />
-    <link rel="stylesheet" href="./src/styles.css?v=20260703-5" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260704-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -18,12 +18,13 @@
           <h1>Wake Challenge</h1>
         </div>
 
-        <div class="summary-card">
+        <div id="summaryCard" class="summary-card">
           <div>
             <span class="metric-label">Next alarm</span>
             <strong id="alarmStatus">Not armed</strong>
+            <span id="alarmCountdown" class="alarm-countdown" hidden></span>
           </div>
-          <p id="appStatus">Loading pose model.</p>
+          <p id="appStatus" aria-live="polite">Loading pose model.</p>
           <span id="offlineStatus" class="cache-status">Checking offline cache.</span>
         </div>
 
@@ -52,12 +53,17 @@
 
         <div id="exerciseList" class="exercise-list"></div>
 
+        <p id="setupLockNote" class="lock-note" hidden>
+          Setup is locked while the alarm is ringing. Finish the challenge to
+          unlock it.
+        </p>
+
         <div class="action-row">
           <button id="saveAlarmButton" class="primary-button" type="button">
             Arm alarm
           </button>
           <button id="startNowButton" class="secondary-button" type="button">
-            Start now
+            Test alarm
           </button>
         </div>
 
@@ -128,6 +134,10 @@
       </section>
     </main>
 
-    <script type="module" src="./src/app.js?v=20260703-5"></script>
+    <button id="soundUnlock" class="sound-unlock" type="button" hidden>
+      Tap anywhere to enable alarm sound
+    </button>
+
+    <script type="module" src="./src/app.js?v=20260704-1"></script>
   </body>
 </html>

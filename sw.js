@@ -1,10 +1,10 @@
-const CACHE_NAME = "alarm-wake-challenge-v11";
+const CACHE_NAME = "alarm-wake-challenge-v12";
 const CACHE_PATHS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./src/app.js?v=20260703-5",
-  "./src/styles.css?v=20260703-5",
+  "./src/app.js?v=20260704-1",
+  "./src/styles.css?v=20260704-1",
   "./assets/icon-192.png",
   "./assets/icon-512.png",
   "./assets/maskable-512.png",
@@ -55,11 +55,13 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, copy.clone());
-            cache.put(new URL("./index.html", self.registration.scope).href, copy);
-          });
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, copy.clone());
+              cache.put(new URL("./index.html", self.registration.scope).href, copy);
+            });
+          }
           return response;
         })
         .catch(() =>

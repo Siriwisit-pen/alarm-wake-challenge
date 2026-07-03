@@ -107,6 +107,7 @@ const CONNECTIONS = [
 
 const dom = {
   addExerciseButton: document.querySelector("#addExerciseButton"),
+  alarmCountdown: document.querySelector("#alarmCountdown"),
   alarmStatus: document.querySelector("#alarmStatus"),
   alarmTime: document.querySelector("#alarmTime"),
   appStatus: document.querySelector("#appStatus"),
@@ -131,7 +132,10 @@ const dom = {
   ringingBanner: document.querySelector("#ringingBanner"),
   saveAlarmButton: document.querySelector("#saveAlarmButton"),
   sensitivitySelect: document.querySelector("#sensitivitySelect"),
+  setupLockNote: document.querySelector("#setupLockNote"),
+  soundUnlock: document.querySelector("#soundUnlock"),
   startNowButton: document.querySelector("#startNowButton"),
+  summaryCard: document.querySelector("#summaryCard"),
   targetCount: document.querySelector("#targetCount"),
   webcam: document.querySelector("#webcam"),
 };
@@ -139,6 +143,7 @@ const dom = {
 const ctx = dom.overlay.getContext("2d");
 
 let poseLandmarker;
+let modelReady = false;
 let webcamStream;
 let animationFrameId = 0;
 let lastVideoTime = -1;
@@ -187,6 +192,7 @@ async function init() {
   renderAlarmStatus();
   registerServiceWorker();
   updateOnlineStatus();
+  window.setInterval(renderCountdown, 1000);
 
   if (appState.alarmArmed) {
     scheduleAlarm();
@@ -208,8 +214,9 @@ async function init() {
     });
     setModelStatus("Model ready", "ready");
     dom.appStatus.textContent = "Model ready.";
+    modelReady = true;
     dom.cameraButton.disabled = false;
-    dom.startNowButton.disabled = false;
+    updateSetupLock();
     if (appState.pendingAlarmStart) {
       appState.pendingAlarmStart = false;
       startChallenge({ fromArmedAlarm: appState.fromArmedAlarm });
@@ -217,9 +224,21 @@ async function init() {
   } catch (error) {
     console.error("Model load failed", error);
     setModelStatus("Model failed", "error");
-    dom.appStatus.textContent = "Pose model could not load.";
+    modelReady = false;
+    appState.pendingAlarmStart = false;
+    if (appState.challengeActive) {
+      appState.challengeActive = false;
+      stopAlarmSound();
+      releaseWakeLock();
+      dom.ringingBanner.hidden = true;
+      setMode("setup");
+    }
+    dom.appStatus.textContent =
+      "Pose model could not load. Reload the page to try again.";
     dom.cameraButton.disabled = true;
-    dom.startNowButton.disabled = true;
+    renderAlarmStatus();
+    updateSetupLock();
+    updateSoundUnlockHint();
   }
 }
 
@@ -231,6 +250,9 @@ function wireControls() {
 
   dom.addExerciseButton.addEventListener("click", addExercise);
   dom.alarmTime.addEventListener("change", () => {
+    if (appState.challengeActive) {
+      return;
+    }
     appState.time = dom.alarmTime.value || "07:00";
     persistSettings();
     if (appState.alarmArmed) {
@@ -246,6 +268,9 @@ function wireControls() {
   dom.resetButton.addEventListener("click", resetChallenge);
   dom.saveAlarmButton.addEventListener("click", toggleAlarmArm);
   dom.sensitivitySelect.addEventListener("change", () => {
+    if (appState.challengeActive) {
+      return;
+    }
     appState.sensitivity = dom.sensitivitySelect.value;
     persistSettings();
     resetDetectorForCurrentExercise("Sensitivity updated.");
@@ -253,6 +278,9 @@ function wireControls() {
   dom.startNowButton.addEventListener("click", () => {
     startChallenge({ fromArmedAlarm: false });
   });
+  dom.soundUnlock.addEventListener("click", handleUserGesture);
+  document.addEventListener("pointerdown", handleUserGesture);
+  document.addEventListener("keydown", handleUserGesture);
 
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
@@ -267,9 +295,16 @@ function wireControls() {
   window.addEventListener("offline", updateOnlineStatus);
   window.addEventListener("resize", syncCanvasSize);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && appState.alarmArmed) {
+    if (document.visibilityState !== "visible") {
+      return;
+    }
+    if (appState.alarmArmed) {
       scheduleAlarm();
     }
+    if (appState.challengeActive) {
+      requestWakeLock();
+    }
+    updateSoundUnlockHint();
   });
 }
 
@@ -341,7 +376,7 @@ function isValidTime(value) {
 }
 
 function addExercise() {
-  if (appState.challenge.length >= MAX_EXERCISES) {
+  if (appState.challengeActive || appState.challenge.length >= MAX_EXERCISES) {
     return;
   }
   appState.challenge.push({
@@ -354,12 +389,29 @@ function addExercise() {
 }
 
 function handleExerciseListChange(event) {
+  if (appState.challengeActive) {
+    return;
+  }
+
   const row = event.target.closest("[data-index]");
-  if (!row || event.target.tagName !== "SELECT") {
+  if (!row) {
     return;
   }
 
   const index = Number.parseInt(row.dataset.index, 10);
+
+  if (event.target.type === "number") {
+    const item = appState.challenge[index];
+    if (item) {
+      event.target.value = `${item.target}`;
+    }
+    return;
+  }
+
+  if (event.target.tagName !== "SELECT") {
+    return;
+  }
+
   const exercise = event.target.value;
   if (!EXERCISE_CONFIG[exercise]) {
     return;
@@ -378,6 +430,10 @@ function handleExerciseListChange(event) {
 }
 
 function handleExerciseTargetInput(event) {
+  if (appState.challengeActive) {
+    return;
+  }
+
   const row = event.target.closest("[data-index]");
   if (!row || event.target.type !== "number") {
     return;
@@ -402,6 +458,10 @@ function handleExerciseTargetInput(event) {
 }
 
 function handleExerciseListClick(event) {
+  if (appState.challengeActive) {
+    return;
+  }
+
   const button = event.target.closest("[data-remove]");
   if (!button) {
     return;
@@ -470,7 +530,23 @@ function renderExerciseRows() {
     dom.exerciseList.append(row);
   }
 
-  dom.addExerciseButton.disabled = appState.challenge.length >= MAX_EXERCISES;
+  updateSetupLock();
+}
+
+function updateSetupLock() {
+  const locked = appState.challengeActive;
+  dom.alarmTime.disabled = locked;
+  dom.sensitivitySelect.disabled = locked;
+  dom.addExerciseButton.disabled =
+    locked || appState.challenge.length >= MAX_EXERCISES;
+  dom.startNowButton.disabled = locked || !modelReady;
+  dom.setupLockNote.hidden = !locked;
+  for (const control of dom.exerciseList.querySelectorAll("select, input")) {
+    control.disabled = locked;
+  }
+  for (const button of dom.exerciseList.querySelectorAll("[data-remove]")) {
+    button.disabled = locked || appState.challenge.length <= 1;
+  }
 }
 
 function toggleAlarmArm() {
@@ -515,6 +591,14 @@ function scheduleAlarm() {
 
 function triggerAlarm() {
   appState.fromArmedAlarm = true;
+  if (appState.challengeActive) {
+    dom.ringingBanner.hidden = false;
+    setMode("ringing");
+    startAlarmSound();
+    requestWakeLock();
+    renderAlarmStatus();
+    return;
+  }
   startChallenge({ fromArmedAlarm: true });
 }
 
@@ -531,10 +615,15 @@ function computeNextAlarm(timeValue) {
 
 function renderAlarmStatus() {
   dom.saveAlarmButton.disabled = appState.challengeActive;
-  dom.saveAlarmButton.textContent = appState.alarmArmed ? "Disarm" : "Arm alarm";
+  dom.saveAlarmButton.textContent = appState.alarmArmed
+    ? "Disarm alarm"
+    : "Arm alarm";
+  dom.saveAlarmButton.classList.toggle("armed", appState.alarmArmed);
+  dom.summaryCard.classList.toggle("armed", appState.alarmArmed);
 
   if (!appState.alarmArmed) {
     dom.alarmStatus.textContent = "Not armed";
+    renderCountdown();
     return;
   }
 
@@ -542,6 +631,33 @@ function renderAlarmStatus() {
     ? new Date(appState.alarmDueAt)
     : computeNextAlarm(appState.time);
   dom.alarmStatus.textContent = formatAlarmTime(dueAt);
+  renderCountdown();
+}
+
+function renderCountdown() {
+  if (!appState.alarmArmed || !appState.alarmDueAt) {
+    dom.alarmCountdown.hidden = true;
+    return;
+  }
+
+  const remaining = appState.alarmDueAt - Date.now();
+  dom.alarmCountdown.hidden = false;
+  dom.alarmCountdown.textContent =
+    remaining <= 0 ? "Ringing now" : `Rings in ${formatDuration(remaining)}`;
+}
+
+function formatDuration(ms) {
+  const totalSeconds = Math.round(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
 }
 
 function formatAlarmTime(date) {
@@ -564,6 +680,7 @@ async function startChallenge({ fromArmedAlarm }) {
       setMode("ringing");
       startAlarmSound();
       requestWakeLock();
+      updateSetupLock();
     }
     dom.appStatus.textContent = fromArmedAlarm
       ? "Alarm due. Waiting for pose model."
@@ -582,6 +699,7 @@ async function startChallenge({ fromArmedAlarm }) {
   resetDetectorForCurrentExercise("Alarm ringing.");
   startAlarmSound();
   requestWakeLock();
+  updateSetupLock();
   startCamera();
 }
 
@@ -613,15 +731,25 @@ function completeChallenge() {
   stopAlarmSound();
   releaseWakeLock();
   dom.ringingBanner.hidden = true;
-  dom.completionBadge.textContent = "Alarm cleared";
+  dom.completionBadge.textContent = appState.fromArmedAlarm
+    ? "Alarm cleared"
+    : "Challenge complete";
   dom.completionBadge.hidden = false;
-  dom.appStatus.textContent = "Alarm cleared.";
   setMode("complete");
-  renderAlarmStatus();
 
   if (appState.fromArmedAlarm && appState.alarmArmed) {
     scheduleAlarm();
+    dom.appStatus.textContent = `Alarm cleared. Next alarm ${formatAlarmTime(
+      new Date(appState.alarmDueAt)
+    )}.`;
+  } else {
+    dom.appStatus.textContent = appState.fromArmedAlarm
+      ? "Alarm cleared."
+      : "Challenge complete. Great work!";
   }
+
+  renderAlarmStatus();
+  updateSetupLock();
 }
 
 async function toggleCamera() {
@@ -675,6 +803,7 @@ function stopCamera() {
   }
   webcamStream = undefined;
   dom.webcam.srcObject = null;
+  detector.lastPlankTick = 0;
   clearCanvas();
   dom.cameraButton.textContent = "Start camera";
   dom.appStatus.textContent = appState.challengeActive
@@ -706,6 +835,7 @@ function handlePoseResult(result, now) {
   const landmarks = result.landmarks?.[0];
 
   if (!landmarks) {
+    detector.lastPlankTick = 0;
     dom.formScore.textContent = "--";
     dom.appStatus.textContent = "No full body pose detected yet.";
     dom.phaseReadout.textContent = `Phase: ${detector.phase}`;
@@ -769,7 +899,9 @@ function evaluateSquat(landmarks, thresholds, now) {
     canCount(now)
   ) {
     addRep(now);
-    detector.phase = "up";
+    if (detector.lastRepAt) {
+      detector.phase = "up";
+    }
   } else if (standing) {
     detector.phase = "up";
   }
@@ -817,7 +949,9 @@ function evaluateJumpingJack(landmarks, thresholds, now) {
     canCount(now)
   ) {
     addRep(now);
-    detector.phase = "closed";
+    if (detector.lastRepAt) {
+      detector.phase = "closed";
+    }
   } else if (closed) {
     detector.phase = "closed";
   }
@@ -863,7 +997,9 @@ function evaluatePushUp(landmarks, thresholds, now) {
     canCount(now)
   ) {
     addRep(now);
-    detector.phase = "up";
+    if (detector.lastRepAt) {
+      detector.phase = "up";
+    }
   } else if (up) {
     detector.phase = "up";
   }
@@ -1018,6 +1154,7 @@ async function ensureAudioContext() {
 async function startAlarmSound() {
   const context = await ensureAudioContext();
   if (!context || alarmIntervalId) {
+    updateSoundUnlockHint();
     return;
   }
 
@@ -1025,9 +1162,29 @@ async function startAlarmSound() {
   alarmIntervalId = window.setInterval(() => {
     playAlarmBeep(context);
   }, 720);
+  updateSoundUnlockHint();
+}
+
+function handleUserGesture() {
+  if (audioContext && audioContext.state === "suspended") {
+    audioContext.resume().then(updateSoundUnlockHint).catch(() => {});
+    return;
+  }
+  updateSoundUnlockHint();
+}
+
+function updateSoundUnlockHint() {
+  const needsUnlock = Boolean(
+    alarmIntervalId && audioContext && audioContext.state === "suspended"
+  );
+  dom.soundUnlock.hidden = !needsUnlock;
 }
 
 function playAlarmBeep(context) {
+  if (context.state !== "running") {
+    return;
+  }
+
   const oscillator = context.createOscillator();
   const gain = context.createGain();
   const now = context.currentTime;
@@ -1047,6 +1204,7 @@ function playAlarmBeep(context) {
 function stopAlarmSound() {
   clearInterval(alarmIntervalId);
   alarmIntervalId = 0;
+  updateSoundUnlockHint();
 }
 
 async function requestWakeLock() {
@@ -1059,6 +1217,9 @@ async function requestWakeLock() {
 
   try {
     appState.wakeLock = await navigator.wakeLock.request("screen");
+    appState.wakeLock.addEventListener("release", () => {
+      appState.wakeLock = null;
+    });
   } catch (error) {
     console.warn("Wake lock failed", error);
   }
@@ -1154,8 +1315,9 @@ function updateFps(now) {
 }
 
 function syncCanvasSize() {
-  const width = dom.overlay.clientWidth;
-  const height = dom.overlay.clientHeight;
+  const dpr = window.devicePixelRatio || 1;
+  const width = Math.round(dom.overlay.clientWidth * dpr);
+  const height = Math.round(dom.overlay.clientHeight * dpr);
   if (dom.overlay.width !== width || dom.overlay.height !== height) {
     dom.overlay.width = width;
     dom.overlay.height = height;
@@ -1167,6 +1329,7 @@ function clearCanvas() {
 }
 
 function drawPose(landmarks) {
+  const dpr = window.devicePixelRatio || 1;
   const frame = getContainedVideoFrame();
   const points = landmarks.map((point) => ({
     ...point,
@@ -1175,6 +1338,7 @@ function drawPose(landmarks) {
   }));
 
   ctx.save();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.strokeStyle = "rgba(77, 213, 181, 0.92)";
@@ -1205,28 +1369,30 @@ function drawPose(landmarks) {
 }
 
 function getContainedVideoFrame() {
-  const canvasRatio = dom.overlay.width / dom.overlay.height;
+  const boxWidth = dom.overlay.clientWidth;
+  const boxHeight = dom.overlay.clientHeight;
+  const canvasRatio = boxWidth / boxHeight;
   const videoRatio =
     dom.webcam.videoWidth && dom.webcam.videoHeight
       ? dom.webcam.videoWidth / dom.webcam.videoHeight
       : 16 / 9;
 
   if (canvasRatio > videoRatio) {
-    const height = dom.overlay.height;
+    const height = boxHeight;
     const width = height * videoRatio;
     return {
-      x: (dom.overlay.width - width) / 2,
+      x: (boxWidth - width) / 2,
       y: 0,
       width,
       height,
     };
   }
 
-  const width = dom.overlay.width;
+  const width = boxWidth;
   const height = width / videoRatio;
   return {
     x: 0,
-    y: (dom.overlay.height - height) / 2,
+    y: (boxHeight - height) / 2,
     width,
     height,
   };

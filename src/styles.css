@@ -217,6 +217,11 @@ label {
   background: var(--teal);
 }
 
+.primary-button.armed {
+  color: #fff;
+  background: var(--danger);
+}
+
 .compact-button {
   min-height: 36px;
   padding: 0 12px;
@@ -247,6 +252,43 @@ label {
   background: var(--panel);
 }
 
+.lock-note {
+  flex: 0 0 auto;
+  padding: 9px 12px;
+  border: 1px solid rgba(242, 193, 94, 0.4);
+  border-radius: 8px;
+  color: var(--amber);
+  background: rgba(242, 193, 94, 0.08);
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.sound-unlock {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  z-index: 60;
+  padding: 0 18px;
+  color: #fff;
+  border: 0;
+  background: var(--danger);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  transform: translateX(-50%);
+  animation: sound-unlock-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes sound-unlock-pulse {
+  0%,
+  100% {
+    transform: translateX(-50%) scale(1);
+  }
+
+  50% {
+    transform: translateX(-50%) scale(1.06);
+  }
+}
+
 .summary-card {
   display: grid;
   gap: 9px;
@@ -254,6 +296,18 @@ label {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel-soft);
+}
+
+.summary-card.armed {
+  border-color: rgba(77, 213, 181, 0.55);
+}
+
+.alarm-countdown {
+  display: block;
+  margin-top: 2px;
+  color: var(--teal);
+  font-size: 0.88rem;
+  font-weight: 740;
 }
 
 .summary-card strong {
