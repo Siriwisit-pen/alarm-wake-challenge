@@ -157,6 +157,8 @@ const appState = {
   currentIndex: 0,
   deferredInstallPrompt: null,
   fromArmedAlarm: false,
+  offlineStatus: "checking",
+  pendingAlarmStart: false,
   sensitivity: "relaxed",
   time: "07:00",
   wakeLock: null,
@@ -208,6 +210,10 @@ async function init() {
     dom.appStatus.textContent = "Model ready.";
     dom.cameraButton.disabled = false;
     dom.startNowButton.disabled = false;
+    if (appState.pendingAlarmStart) {
+      appState.pendingAlarmStart = false;
+      startChallenge({ fromArmedAlarm: appState.fromArmedAlarm });
+    }
   } catch (error) {
     console.error("Model load failed", error);
     setModelStatus("Model failed", "error");
@@ -302,7 +308,12 @@ function persistSettings() {
     sensitivity: appState.sensitivity,
     time: appState.time,
   };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch (error) {
+    console.warn("Settings save failed", error);
+    dom.appStatus.textContent = "Settings could not be saved on this browser.";
+  }
 }
 
 function normalizeChallenge(challenge) {
@@ -451,7 +462,7 @@ function renderExerciseRows() {
     removeButton.type = "button";
     removeButton.textContent = "\u00d7";
     removeButton.title = "Remove exercise";
-    removeButton.ariaLabel = "Remove exercise";
+    removeButton.setAttribute("aria-label", "Remove exercise");
     removeButton.dataset.remove = `${index}`;
     removeButton.disabled = appState.challenge.length <= 1;
 
@@ -543,7 +554,20 @@ function formatAlarmTime(date) {
 
 async function startChallenge({ fromArmedAlarm }) {
   if (!poseLandmarker) {
-    dom.appStatus.textContent = "Pose model is still loading.";
+    appState.pendingAlarmStart = fromArmedAlarm;
+    appState.fromArmedAlarm = fromArmedAlarm;
+    if (fromArmedAlarm) {
+      appState.challengeActive = true;
+      dom.completionBadge.hidden = true;
+      dom.ringingBanner.hidden = false;
+      renderAlarmStatus();
+      setMode("ringing");
+      startAlarmSound();
+      requestWakeLock();
+    }
+    dom.appStatus.textContent = fromArmedAlarm
+      ? "Alarm due. Waiting for pose model."
+      : "Pose model is still loading.";
     return;
   }
 
@@ -1029,6 +1053,9 @@ async function requestWakeLock() {
   if (!navigator.wakeLock?.request) {
     return;
   }
+  if (appState.wakeLock) {
+    return;
+  }
 
   try {
     appState.wakeLock = await navigator.wakeLock.request("screen");
@@ -1060,24 +1087,37 @@ async function installApp() {
 
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) {
-    dom.offlineStatus.textContent = "Offline cache unavailable.";
+    appState.offlineStatus = "unavailable";
+    updateOnlineStatus();
     return;
   }
 
   try {
     await navigator.serviceWorker.register("./sw.js");
     await navigator.serviceWorker.ready;
-    dom.offlineStatus.textContent = "Offline ready.";
+    appState.offlineStatus = "ready";
+    updateOnlineStatus();
   } catch (error) {
     console.warn("Service worker failed", error);
-    dom.offlineStatus.textContent = "Offline cache failed.";
+    appState.offlineStatus = "failed";
+    updateOnlineStatus();
   }
 }
 
 function updateOnlineStatus() {
   if (!navigator.onLine) {
-    dom.offlineStatus.textContent = "Offline.";
+    dom.offlineStatus.textContent =
+      appState.offlineStatus === "ready" ? "Offline ready." : "Offline.";
+    return;
   }
+
+  const labels = {
+    checking: "Checking offline cache.",
+    failed: "Offline cache failed.",
+    ready: "Offline ready.",
+    unavailable: "Offline cache unavailable.",
+  };
+  dom.offlineStatus.textContent = labels[appState.offlineStatus];
 }
 
 function getCameraErrorMessage(error) {
